@@ -1,5 +1,5 @@
 {
-  "name": "mongodb_imex_test",
+  "name": "IMEX_MongoDB",
   "version": "0.1.0",
   "private": true,
   "scripts": {
