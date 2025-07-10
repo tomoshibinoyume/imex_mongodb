@@ -1,4 +1,4 @@
-[`https://mongodb-imex-next-trial.vercel.app/`](https://mongodb-imex-next-trial.vercel.app/).
+[`https://imex-mongodb.vercel.app`](https://imex-mongodb.vercel.app).
 
 ## about npm install ...
 
