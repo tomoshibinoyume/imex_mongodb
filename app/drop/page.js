@@ -194,9 +194,11 @@ export default function ExportPage() {
         setCollections([]);
         setInputDbName('');
         setInputColName('');
+        setIsColLoading(true);
       }
     } catch (error) {
       console.error('削除リクエスト失敗:', error);
+      setIsColLoading(true);
     } finally {
       setDropDbLoading(false);
     }
@@ -402,7 +404,7 @@ export default function ExportPage() {
             <p className="text-xs mt-2">プロジェクトが接続されていません。</p>
           ) : !inputDbName ? (
             <p className="text-xs mt-2">データベースを選択して下さい。</p>
-          ) : !collections.length ? (
+          ) : collections.length == 0 ? (
             <p className="text-xs mt-2">データベースを選択して下さい。</p>
           ) : (
             <div className="p-5">

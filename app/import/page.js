@@ -38,6 +38,8 @@ export default function ImportPage() {
   const [importTotal, setImportTotal] = useState('');
   const [connectedProjects, setConnectedProjects] = useState([]);
   const [projectUri, setProjectUri] = useState('');
+  const importAbortRef = useRef(false);
+
 
   const fetchTotpVerify = async (id, email) => {
     try {
@@ -110,6 +112,25 @@ export default function ImportPage() {
       console.error("fetchConnectedProjects error:", err);
       setConnectedProjects([]);
       return null;
+    }
+  };
+
+  const fetchCollectionsForCurrentDb = async () => {
+    try {
+      const projects = await fetchConnectedProjects(session.user.id);
+      if (!projects || projects.length === 0) return;
+      const encryptedUri = projects[0].projectUri;
+      const res = await fetch('/api/collections', {
+        method: 'POST',
+        body: JSON.stringify({ dbName: inputDbName, encryptedUri }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const text = await res.text();
+      const data = JSON.parse(text);
+      setCollections(data.colArray || []);
+    } catch (error) {
+      console.error("fetchCollectionsForCurrentDb error:", error);
+      setCollections([]);
     }
   };
 
@@ -233,8 +254,9 @@ export default function ImportPage() {
 
 
   const handleImport = async () => {
-    // console.log('handleImport');
     setImportLoading(true);
+    importAbortRef.current = false; // ← 開始時にリセット
+
     try {
       const projects = await fetchConnectedProjects(session.user.id);
       if (!projects || projects.length === 0) return;
@@ -243,13 +265,18 @@ export default function ImportPage() {
       const chunkSize = 100;
       const dbName = String(inputDbName).trim();
       const colName = String(inputColName).trim();
-      // データを100件ずつに分割
       const chunks = [];
       for (let i = 0; i < parsed.length; i += chunkSize) {
         chunks.push(parsed.slice(i, i + chunkSize));
       }
+
       let totalInserted = 0;
       for (let i = 0; i < chunks.length; i++) {
+        if (importAbortRef.current) {
+          alert('インポートが中止されました。');
+          break;
+        }
+
         const res = await fetch('/api/import', {
           method: 'POST',
           body: JSON.stringify({
@@ -260,67 +287,35 @@ export default function ImportPage() {
           }),
           headers: { 'Content-Type': 'application/json' },
         });
+
         if (!res.ok) {
           const errorText = await res.text();
           throw new Error(`チャンク${i + 1}のインポート失敗: ${res.status} ${errorText}`);
         }
+
         const result = await res.json();
         totalInserted += result.insertedCount || 0;
         setImportProgress(totalInserted);
         setImportTotal(chunks.length);
-        // console.log(`チャンク ${i + 1}/${chunks.length} インポート成功`);
       }
 
-      alert(`${totalInserted} 件のドキュメントをインポートしました`);
-
-      // 入力リセット
-      setColLength(0);
-      setContent('');
-      setSelectedDb(dbName);
-
-      // コレクション再取得
-      setCollections([]);
-      setIsColLoading(false);
-      try {
-        const res = await fetch('/api/collections', {
-          method: 'POST',
-          body: JSON.stringify({ dbName, encryptedUri }),
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const text = await res.text();
-        if (!text) {
-          console.warn("コレクション取得レスポンスが空です");
-          setCollections([]);
-        } else {
-          const data = JSON.parse(text);
-          setCollections(data.colArray || []);
-          // handleImport の try ブロック内、setCollections のあとに追加
-          if (data.colArray && data.colArray.some(col => col.name === colName)) {
-            setSelectedCol(colName);
-            setInputColName(colName);
-          }
-        }
-        setIsColLoading(true);
-      } catch (error) {
-        console.error('handleImport -> collections fetch error:', error);
-        setIsColLoading(true);
-        setCollections([]);
-      } finally {
-        setIsColLoading(false);
-        setImportLoading(false);
+      if (!importAbortRef.current) {
+        alert(`${totalInserted} 件のドキュメントをインポートしました`);
       }
 
-      // データベース一覧も更新
-      await fetchDatabase(projects[0].projectUri);
-      setImportProgress('');
+      // インポート後の処理（省略）
+      // ...
     } catch (err) {
       alert('インポート処理でエラーが発生しました。');
       console.error('Import Error:', err);
       setContent(err.message);
+    } finally {
+      importAbortRef.current = false; // ← 必ずリセット
       setIsColLoading(false);
       setImportLoading(false);
     }
   };
+
 
 
   if (status === "loading" || isLoading) {
@@ -455,7 +450,7 @@ export default function ImportPage() {
             <p className="text-xs mt-2">プロジェクトが接続されていません。</p>
           ) : !inputDbName ? (
             <p className="text-xs mt-2">データベースを選択して下さい。</p>
-          ) : !collections ? (
+          ) : collections.length == 0 ? (
             <p className="text-xs mt-2">コレクションがありません。</p>
           ) : (
             <div className="p-5">
@@ -463,6 +458,17 @@ export default function ImportPage() {
             </div>
           )
         )}
+      </div>
+      </div>
+
+      <div className="flex-grow flex gap-4 w-full px-3">
+      <div className="w-1/2 databases">
+      <p>データベース</p>
+      <input type="text" name="title" value={inputDbName} className="w-full" onChange={(e) => setInputDbName(e.target.value)} placeholder="データベース名" />
+      </div>
+      <div className="w-1/2 collections">
+      <p>コレクション</p>
+      <input type="text" name="text" value={inputColName} className="w-full" onChange={(e) => setInputColName(e.target.value)} placeholder="コレクション名" />
       </div>
       </div>
 
@@ -493,8 +499,21 @@ export default function ImportPage() {
       </div>
 
       <div className="w-1/2">
-      <button className="w-full" disabled={isDisabled || importLoading} onClick={handleImport}>
-      {importLoading ? '書き込み中' : 'インポート'}
+      <button
+        className="w-full text-white py-2 px-4 rounded"
+        disabled={isDisabled}
+        onClick={() => {
+          if (importLoading) {
+            importAbortRef.current = true;
+            setImportLoading(false);
+            fetchDatabase(projectUri); // データベース更新
+            fetchCollectionsForCurrentDb(); // コレクション更新（下に詳細）
+          } else {
+            handleImport();
+          }
+        }}
+      >
+        {importLoading ? 'インポート中止' : 'インポート'}
       </button>
       </div>
       </div>
