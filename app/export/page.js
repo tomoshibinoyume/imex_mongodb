@@ -413,7 +413,7 @@ export default function ExportPage() {
             <div className="p-5">
             <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500 mx-auto"></div>
             </div>
-          ) : !connectedProjects ? (
+          ) : !connectedProjects || connectedProjects.length === 0 ? (
             <p className="text-xs mt-2">プロジェクトが接続されていません。</p>
           ) : !inputDbName ? (
             <p className="text-xs mt-2">データベースを選択して下さい。</p>

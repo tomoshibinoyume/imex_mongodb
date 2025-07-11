@@ -157,7 +157,6 @@ export default function ImportPage() {
     setSelectedDb(dbName);
     setSelectedCol('');
     setInputColName('');
-    setIsColLoading(true);
     setCollections([]);
     setExportData([]);
     setColLength("");
@@ -180,7 +179,6 @@ export default function ImportPage() {
       const data = JSON.parse(text);
       // console.log(data.colArray);
       setCollections(data.colArray || []);
-      setIsColLoading(true);
     } catch (error){
       setCollections([]);  // エラー時にコレクションを空に設定
       setIsColLoading(true);
@@ -234,7 +232,7 @@ export default function ImportPage() {
           setDocSize(new TextEncoder().encode(jsonStr).length);
         } else {
           setContent('ファイルを読み込めませんでした。\n拡張子を確認して下さい。');
-          setColLength(0);
+          setColLength('');
         }
       } catch (err) {
         console.error(err);
@@ -256,7 +254,6 @@ export default function ImportPage() {
   const handleImport = async () => {
     setImportLoading(true);
     importAbortRef.current = false; // ← 開始時にリセット
-
     try {
       const projects = await fetchConnectedProjects(session.user.id);
       if (!projects || projects.length === 0) return;
@@ -301,10 +298,15 @@ export default function ImportPage() {
 
       if (!importAbortRef.current) {
         alert(`${totalInserted} 件のドキュメントをインポートしました`);
+        setColLength('');
+        setContent('');
+        setInputDbName('');
+        setInputColName('');
       }
 
       // インポート後の処理（省略）
-      // ...
+      fetchDatabase(projectUri); // データベース更新
+      fetchCollectionsForCurrentDb(); // コレクション更新（下に詳細）
     } catch (err) {
       alert('インポート処理でエラーが発生しました。');
       console.error('Import Error:', err);
@@ -446,11 +448,11 @@ export default function ImportPage() {
             <div className="p-5">
             <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500 mx-auto"></div>
             </div>
-          ) : !connectedProjects ? (
+          ) : !connectedProjects || connectedProjects.length === 0 ? (
             <p className="text-xs mt-2">プロジェクトが接続されていません。</p>
           ) : !inputDbName ? (
             <p className="text-xs mt-2">データベースを選択して下さい。</p>
-          ) : collections.length == 0 ? (
+          ) : !collections ? (
             <p className="text-xs mt-2">コレクションがありません。</p>
           ) : (
             <div className="p-5">
@@ -501,7 +503,7 @@ export default function ImportPage() {
       <div className="w-1/2">
       <button
         className="w-full text-white py-2 px-4 rounded"
-        disabled={isDisabled}
+        disabled={!importLoading && isDisabled}
         onClick={() => {
           if (importLoading) {
             importAbortRef.current = true;
@@ -524,14 +526,19 @@ export default function ImportPage() {
         </p>
       )}
 
-      <p className="text-center m-auto">
-      {importProgress && (
-        <span>{importProgress} / </span>
+      {content && Number(colLength || 0) > 0 && (
+        <div className="text-center m-auto w-full">
+        <p className="mb-3">
+        <span className="text-xs">インポート中止後は、再開できません。<br />再度実行すると最初からやり直しになります。</span>
+        </p>
+        <p>
+        {importProgress && (
+          <span>{importProgress} / </span>
+        )}
+        <span>{colLength}件 / {(docSize / 1024 / 1024).toFixed(2)}MB</span><br />
+        </p>
+        </div>
       )}
-      {content && (
-        <span>{colLength}件 / {(docSize / 1024 / 1024).toFixed(2)}MB</span>
-      )}
-      </p>
 
       {content && (
         <>

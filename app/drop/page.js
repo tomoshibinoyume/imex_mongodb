@@ -154,6 +154,8 @@ export default function ExportPage() {
       setCollections(data.colArray || []);
     } catch (error) {
       console.error('handleDbChange failed:', error);
+      setCollections([]);  // エラー時にコレクションを空に設定
+      setIsColLoading(true);
     } finally {
       setIsColLoading(false);
     }
@@ -400,12 +402,12 @@ export default function ExportPage() {
             <div className="p-5">
             <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500 mx-auto"></div>
             </div>
-          ) : !connectedProjects ? (
+          ) : !connectedProjects || connectedProjects.length === 0 ? (
             <p className="text-xs mt-2">プロジェクトが接続されていません。</p>
           ) : !inputDbName ? (
             <p className="text-xs mt-2">データベースを選択して下さい。</p>
-          ) : collections.length == 0 ? (
-            <p className="text-xs mt-2">データベースを選択して下さい。</p>
+          ) : !collections ? (
+            <p className="text-xs mt-2">コレクションがありません。</p>
           ) : (
             <div className="p-5">
             <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500 mx-auto"></div>
