@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+input[type="radio"] {
+  appearance: none;
+}
+
+.databases label, .collections label {
+  display: block;
+  padding: 0.25em;
+}
+
+.databases label:active, .collections label:active {
+  background: whitesmoke;
+  color: black;
+}
+
+.databases label:hover, .collections label:hover {
+  background: dimgray;
+}
+
+input[type="text"], textarea {
+  background: white;
+  color: black;
+  padding-left: 0.25em;
+  text-align: center;
+}
+
+textarea {
+  text-align: left;
+}
+
+button, .input_file {
+  border: solid 1px white;
+  border-radius: 2em;
+  padding: 0.5em 1em;
+}
+
+button:active {
+  background: grey;
+}
+
+button:disabled {
+  background: grey;
+  opacity: 0.25;
+}
+
+.col_details {
+  line-height: 1.25em;
+}
